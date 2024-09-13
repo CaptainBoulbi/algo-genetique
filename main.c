@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "raylib.h"
+#include "raymath.h"
 
 #define MAPDISTAT(map, x, y) ((map).poids[(x) + (y)*((map).len)])
 
@@ -75,27 +76,40 @@ int map_coord_valide(MapCoord map)
     return 1;
 }
 
+MapDistance map_coord_to_map_distance(MapCoord mapc)
+{
+    MapDistance mapd;
+    mapd.len = mapc.len;
+    mapd.poids = calloc(sizeof(*mapd.poids), mapd.len * mapd.len);
+
+    for (int y = 0; y < mapc.len; y++) {            
+        for (int x = y+1; x < mapc.len; x++) {
+            float distance = Vector2Distance(MAPCOORDAT(mapc, x, 0), MAPCOORDAT(mapc, y, 0));
+            MAPDISTAT(mapd, x, y) = distance;
+            MAPDISTAT(mapd, y, x) = distance;
+        }
+    }
+    return mapd;
+}
+
 int main()
 {
     MapCoord mapc;
     mapc.len = 5;
-    mapc.coord = malloc(sizeof(*mapc.coord) * mapc.len * mapc.len);
+    mapc.coord = calloc(sizeof(*mapc.coord), mapc.len * mapc.len);
 
     MAPCOORDAT(mapc, 0, 0) = (Vector2) {0.12,  0.69};
     MAPCOORDAT(mapc, 1, 0) = (Vector2) {0.1,   0.69};
     MAPCOORDAT(mapc, 2, 0) = (Vector2) {0.2,   0.69};
     MAPCOORDAT(mapc, 3, 0) = (Vector2) {0.42,  0.69};
     MAPCOORDAT(mapc, 4, 0) = (Vector2) {0.4,   0.69};
-    MAPCOORDAT(mapc, 0, 1) = (Vector2) {0.2,   0.69};
-    MAPCOORDAT(mapc, 1, 1) = (Vector2) {0.69,  0.69};
-    MAPCOORDAT(mapc, 2, 1) = (Vector2) {0.6,   0.69};
-    MAPCOORDAT(mapc, 3, 1) = (Vector2) {0.9,   0.69};
-    MAPCOORDAT(mapc, 4, 1) = (Vector2) {0.412, 0.69};
 
     map_coord_print(mapc);
 
     if (!map_coord_valide(mapc))
         printf("mapc not valide\n");
 
+    MapDistance mapd = map_coord_to_map_distance(mapc);
+    map_distance_print(mapd);
     return 0;
 }
