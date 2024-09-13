@@ -6,8 +6,6 @@
 
 #define MAPDISTAT(map, x, y) ((map).poids[(x) + (y)*((map).len)])
 
-#define MAPCOORDAT(map, x, y) ((map).coord[(x) + (y)*((map).len)])
-
 typedef struct MapCoord {
     Vector2 *coord;
     int len;
@@ -49,29 +47,18 @@ int map_distance_valide(MapDistance map)
 
 void map_coord_print(MapCoord map)
 {
-    int len = map.len - 1;
-    printf("[\n    [ ");
-    for (int y=0; y<len; y++) {
-        for (int x=0; x<len; x++) {
-            printf("(%.3f, %.3f), ", MAPCOORDAT(map, x, y).x, MAPCOORDAT(map, x, y).y);
-        }
-        printf("(%.3f, %.3f) ],\n    [ ", MAPCOORDAT(map, len, y).x, MAPCOORDAT(map, len, y).y);
+    printf("[ ");
+    for (int i=0; i<map.len-1; i++) {
+        printf("(%.3f, %.3f), ", map.coord[i].x, map.coord[i].y);
     }
-    for (int x=0; x<len; x++) {
-        printf("(%.3f, %.3f), ", MAPCOORDAT(map, x, len).x, MAPCOORDAT(map, x, len).y);
-    }
-    printf("(%.3f, %.3f) ],\n]\n", MAPCOORDAT(map, len, len).x, MAPCOORDAT(map, len, len).y);
+    printf("(%.3f, %.3f) ]\n", map.coord[map.len-1].x, map.coord[map.len-1].y);
 }
 
 int map_coord_valide(MapCoord map)
 {
-    for (int y=0; y<map.len; y++) {
-        for (int x=0; x<map.len; x++) {
-            float xx = MAPCOORDAT(map, x, y).x;
-            float yy = MAPCOORDAT(map, x, y).y;
-            if (xx < 0.0 || xx > 1.0 || yy < 0.0 || yy > 1.0)
-                return 0;
-        }
+    for (int i=0; i<map.len; i++) {
+        if (map.coord[i].x < 0.0 || map.coord[i].x > 1.0 || map.coord[i].y < 0.0 || map.coord[i].y > 1.0)
+            return 0;
     }
     return 1;
 }
@@ -84,7 +71,7 @@ MapDistance map_coord_to_map_distance(MapCoord mapc)
 
     for (int y = 0; y < mapc.len; y++) {            
         for (int x = y+1; x < mapc.len; x++) {
-            float distance = Vector2Distance(MAPCOORDAT(mapc, x, 0), MAPCOORDAT(mapc, y, 0));
+            float distance = Vector2Distance(mapc.coord[x], mapc.coord[y]);
             MAPDISTAT(mapd, x, y) = distance;
             MAPDISTAT(mapd, y, x) = distance;
         }
@@ -96,13 +83,13 @@ int main()
 {
     MapCoord mapc;
     mapc.len = 5;
-    mapc.coord = calloc(sizeof(*mapc.coord), mapc.len * mapc.len);
+    mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
 
-    MAPCOORDAT(mapc, 0, 0) = (Vector2) {0.12,  0.69};
-    MAPCOORDAT(mapc, 1, 0) = (Vector2) {0.1,   0.69};
-    MAPCOORDAT(mapc, 2, 0) = (Vector2) {0.2,   0.69};
-    MAPCOORDAT(mapc, 3, 0) = (Vector2) {0.42,  0.69};
-    MAPCOORDAT(mapc, 4, 0) = (Vector2) {0.4,   0.69};
+    mapc.coord[0] = (Vector2) {0.12,  0.69};
+    mapc.coord[1] = (Vector2) {0.1,   0.69};
+    mapc.coord[2] = (Vector2) {0.2,   0.69};
+    mapc.coord[3] = (Vector2) {0.42,  0.69};
+    mapc.coord[4] = (Vector2) {0.4,   0.69};
 
     map_coord_print(mapc);
 
