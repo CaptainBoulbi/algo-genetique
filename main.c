@@ -38,7 +38,7 @@ int map_distance_valide(MapDistance map)
         for (int x=0; x<map.len; x++) {
             if (MAPDISTAT(map, x, y) != MAPDISTAT(map, y, x))
                 return 0;
-            if (x == y && MAPDISTAT(map, x, y) != -1)
+            if (x == y && MAPDISTAT(map, x, y) != 0)
                 return 0;
         }
     }
@@ -98,5 +98,9 @@ int main()
 
     MapDistance mapd = map_coord_to_map_distance(mapc);
     map_distance_print(mapd);
+
+    if (!map_distance_valide(mapd))
+        printf("mapd not valide\n");
+
     return 0;
 }
