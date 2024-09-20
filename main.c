@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "raylib.h"
 #include "raymath.h"
 
 #define MAPDISTAT(map, x, y) ((map).poids[(x) + (y)*((map).len)])
+
+#define INDIVIDU(pop, i, l) ((pop) + sizeof(*(pop)) * (l) * (i))
+
+#define NB_INDIVIDUS 30
 
 typedef struct MapCoord {
     Vector2 *coord;
@@ -79,8 +84,49 @@ MapDistance map_coord_to_map_distance(MapCoord mapc)
     return mapd;
 }
 
+void individu_print(int* ind, int len)
+{
+    printf("[ ");
+    for (int i = 0; i < len-1; ++i)
+    {
+        printf("%d, ", ind[i]);
+    }
+    printf("%d ]\n", ind[len-1]);
+}
+
+void individu_generate(int* ind, int len)
+{
+    for (int i=0; i<len; ++i)
+    {
+        ind[i]=i;
+    }
+
+    for (int i=0; i<len; ++i)
+    {
+        int index = GetRandomValue(0, len-1);
+        int swap = ind[index];
+        ind[index] = ind[i];
+        ind[i] = swap;
+    }
+}
+
+int individu_valide(int* ind, int len)
+{
+    for (int y = 0; y < len; ++y)
+    {
+        for (int i = y+1; i < len; ++i)
+        {
+            if (ind[y] == ind[i])
+                return 0;
+        }
+    }
+
+    return 1;
+}
+
 int main()
 {
+    SetRandomSeed(time(0));
     MapCoord mapc;
     mapc.len = 5;
     mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
@@ -93,14 +139,29 @@ int main()
 
     map_coord_print(mapc);
 
-    if (!map_coord_valide(mapc))
+    if (!map_coord_valide(mapc)) {
         printf("mapc not valide\n");
+        return 0;
+    }
 
     MapDistance mapd = map_coord_to_map_distance(mapc);
     map_distance_print(mapd);
 
-    if (!map_distance_valide(mapd))
+    if (!map_distance_valide(mapd)) {
         printf("mapd not valide\n");
+        return 0;
+    }
+
+    int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
+
+    for (int i = 0; i < NB_INDIVIDUS; ++i)
+    {
+        individu_generate(INDIVIDU(pop, i, mapd.len), mapd.len);
+        individu_print(INDIVIDU(pop, i, mapd.len), mapd.len);
+        
+        if (!individu_valide(INDIVIDU(pop, i, mapd.len), mapd.len))
+            printf("Individu non valide\n");
+    }
 
     return 0;
 }
