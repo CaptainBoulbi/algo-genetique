@@ -124,6 +124,15 @@ int individu_valide(int* ind, int len)
     return 1;
 }
 
+float individu_performance(int* ind, int len, MapDistance map)
+{
+    float perf = 0.0f;
+    for (int i = 0; i < len; ++i)
+    {
+        //perf += qlq chose;
+    }
+}
+
 int main()
 {
     SetRandomSeed(time(0));
@@ -162,6 +171,13 @@ int main()
         if (!individu_valide(INDIVIDU(pop, i, mapd.len), mapd.len))
             printf("Individu non valide\n");
     }
+
+    float perf[NB_INDIVIDUS];
+
+    for (int i = 0; i < NB_INDIVIDUS; ++i)
+     {
+         perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
+     } 
 
     return 0;
 }
