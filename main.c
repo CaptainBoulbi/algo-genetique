@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include "raylib.h"
 #include "raymath.h"
@@ -9,7 +10,11 @@
 
 #define INDIVIDU(pop, i, l) ((pop) + sizeof(*(pop)) * (l) * (i))
 
-#define NB_INDIVIDUS 30
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define NB_INDIVIDUS 32
 
 typedef struct MapCoord {
     Vector2 *coord;
@@ -129,8 +134,67 @@ float individu_performance(int* ind, int len, MapDistance map)
     float perf = 0.0f;
     for (int i = 0; i < len; ++i)
     {
-        //perf += qlq chose;
+        int y = (i+1)%len;
+        perf += MAPDISTAT(map, ind[i], ind[y]);
     }
+    return perf;
+}
+
+void individu_fix(int *ind, int len)
+{
+    int ex[len];
+    memset(ex, 0, len * sizeof(*ex));
+
+    for (int i = 0; i < len; i++) {
+        ex[ind[i]] += 1;
+    }
+
+    do {
+        for (int i = 0; i < len; i++) {
+            if (ex[i] != 2)
+                continue;
+            for (int y = 0; y < len; y++) {
+                if (ex[y] != 0)
+                    continue;
+                for (int j = 0; j < len; j++) {
+                    if (ind[j] != i)
+                        continue;
+                    ind[j] = y;
+                    ex[i]++;
+                    ex[y]--;
+                    break;
+                }
+                break;
+            }
+            break;
+        }
+    } while (!individu_valide(ind, len));
+}
+
+void reproduce(int *fort1, int *fort2, int *faible1, int *faible2, int len)
+{
+    int idx1 = GetRandomValue(0, len-1);
+    int idx2 = GetRandomValue(0, len-1);
+    int swap = idx2;
+    idx2 = MAX(idx1, idx2);
+    idx1 = MIN(idx1, swap);
+
+    for (int i = 0; i < idx1 ; i++) {
+        faible1[i] = fort1[i];
+        faible2[i] = fort2[i];
+    }
+    for (int i = idx1; i < idx2; i++) {
+        faible2[i] = fort1[i];
+        faible1[i] = fort2[i];
+    }
+    for (int i = idx2; i < len ; i++) {
+        faible1[i] = fort1[i];
+        faible2[i] = fort2[i];
+    }
+
+    individu_fix(faible1, len);
+    individu_fix(faible2, len);
+
 }
 
 int main()
@@ -140,12 +204,13 @@ int main()
     mapc.len = 5;
     mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
 
-    mapc.coord[0] = (Vector2) {0.12,  0.69};
-    mapc.coord[1] = (Vector2) {0.1,   0.69};
-    mapc.coord[2] = (Vector2) {0.2,   0.69};
-    mapc.coord[3] = (Vector2) {0.42,  0.69};
-    mapc.coord[4] = (Vector2) {0.4,   0.69};
+    mapc.coord[0] = (Vector2) {0.12,  0.96};
+    mapc.coord[1] = (Vector2) {0.69,  0.12};
+    mapc.coord[2] = (Vector2) {0.23,  0.36};
+    mapc.coord[3] = (Vector2) {0.42,  0.96};
+    mapc.coord[4] = (Vector2) {0.55,  0.02};
 
+    printf("Coordonée ville :\n");
     map_coord_print(mapc);
 
     if (!map_coord_valide(mapc)) {
@@ -153,6 +218,7 @@ int main()
         return 0;
     }
 
+    printf("Matrice distance entre ville :\n");
     MapDistance mapd = map_coord_to_map_distance(mapc);
     map_distance_print(mapd);
 
@@ -163,6 +229,7 @@ int main()
 
     int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
 
+    printf("Population aléatoirs :\n");
     for (int i = 0; i < NB_INDIVIDUS; ++i)
     {
         individu_generate(INDIVIDU(pop, i, mapd.len), mapd.len);
@@ -174,10 +241,33 @@ int main()
 
     float perf[NB_INDIVIDUS];
 
-    for (int i = 0; i < NB_INDIVIDUS; ++i)
-     {
-         perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
-     } 
+    for (int i = 0; i < NB_INDIVIDUS; ++i) {
+        perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
+    }
+
+    for (int i = 0; i < NB_INDIVIDUS - 1; i++) {
+        for (int y = 0; y < NB_INDIVIDUS - 1; y++) {
+            if (perf[y] > perf[y+1]) {
+                float swap = perf[y];
+                perf[y] = perf[y+1];
+                perf[y+1] = swap;
+                for (int j = 0; j < mapd.len; j++) {
+                    int swap = INDIVIDU(pop, y, mapd.len)[j];
+                    INDIVIDU(pop, y, mapd.len)[j] = INDIVIDU(pop, y+1, mapd.len)[j];
+                    INDIVIDU(pop, y+1, mapd.len)[j] = swap;
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < NB_INDIVIDUS/4; i+=2) {
+        int offset = NB_INDIVIDUS/2;
+        int *fort1 = INDIVIDU(pop, i, mapd.len);
+        int *fort2 = INDIVIDU(pop, i+1, mapd.len);
+        int *faible1 = INDIVIDU(pop, offset+i, mapd.len);
+        int *faible2 = INDIVIDU(pop, offset+i+1, mapd.len);
+        reproduce(fort1, fort2, faible1, faible2, mapd.len);
+    }
 
     return 0;
 }
