@@ -241,12 +241,14 @@ int main()
 
     float perf[NB_INDIVIDUS];
 
+    for (int c = 0; c < 50000; c++) {
+
     for (int i = 0; i < NB_INDIVIDUS; ++i) {
         perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
     }
 
     for (int i = 0; i < NB_INDIVIDUS - 1; i++) {
-        for (int y = 0; y < NB_INDIVIDUS - 1; y++) {
+        for (int y = 0; y < NB_INDIVIDUS - i - 1; y++) {
             if (perf[y] > perf[y+1]) {
                 float swap = perf[y];
                 perf[y] = perf[y+1];
@@ -268,6 +270,15 @@ int main()
         int *faible2 = INDIVIDU(pop, offset+i+1, mapd.len);
         reproduce(fort1, fort2, faible1, faible2, mapd.len);
     }
+
+    }
+
+    printf("Le chemin le plus court :\n[ ");
+    for (int i = 0; i < mapd.len-1; i++) {
+        printf("%d, ", INDIVIDU(pop, 0, mapd.len)[i]);
+    }
+    printf("%d ]\n", INDIVIDU(pop, 0, mapd.len)[mapd.len-1]);
+    printf("Avec une performance de %.3f.\n", perf[0]);
 
     return 0;
 }
