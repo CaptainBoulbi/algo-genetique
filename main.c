@@ -167,28 +167,20 @@ void individu_fix(int *ind, int len)
     }
 
     do {
-        for (int i = 0; i < len; i++) {
-            if (ex[i] != 2)
-                continue;
-            // a partir d'ici i est une ville qui existe 2 fois
-            for (int y = 0; y < len; y++) {
-                if (ex[y] != 0)
-                    continue;
-                // a partir d'ici y est une ville qui n'est pas sur le chemin
-                for (int j = 0; j < len; j++) {
-                    if (ind[j] != i)
-                        continue;
-                    // a partir d'ici j est l'emplacement a l'aquelle le doublon ce trouve
-                    // donc a l'emplacement de j on replace le doublon i par la ville y
-                    ind[j] = y;
-                    ex[i]++;
-                    ex[y]--;
-                    break;
-                }
-                break;
-            }
-            break;
-        }
+        int doublon = 0; // la ville en doublon
+        for (doublon = 0; doublon < len && ex[doublon] != 2; doublon++);
+
+        int oublier = 0; // la ville qui n'est pas traverser
+        for (oublier = 0; oublier < len && ex[oublier] != 0; oublier++);
+
+        int index = 0; // l'index dans le chemin de la ville en doublon
+        for (index = 0; index < len && ind[index] != doublon; index++);
+
+        // on remplace le doublon par la vile qui n'est pas traverser
+        ind[index] = oublier;
+        ex[doublon]++;
+        ex[oublier]--;
+
         // on repete jusqu'a ce qu'il n'ya plus de doublon et que toute les villes sont parcouru par le chemin
     } while (!individu_valide(ind, len));
 }
