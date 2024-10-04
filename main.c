@@ -16,6 +16,8 @@
 
 #define NB_INDIVIDUS 32
 
+#define MUTATION_POURCENTAGE 80
+
 typedef struct MapCoord {
     Vector2 *coord;
     int len;
@@ -197,6 +199,18 @@ void reproduce(int *fort1, int *fort2, int *faible1, int *faible2, int len)
 
 }
 
+void mutate(int *ind, int len)
+{
+    int idx1 = GetRandomValue(0, len-1);
+    int idx2;
+    do {
+        idx2 = GetRandomValue(0, len-1);
+    } while (idx1 == idx2);
+    int swap = ind[idx1];
+    ind[idx1] = ind[idx2];
+    ind[idx2] = swap;
+}
+
 int main()
 {
     SetRandomSeed(time(0));
@@ -233,7 +247,7 @@ int main()
     for (int i = 0; i < NB_INDIVIDUS; ++i)
     {
         individu_generate(INDIVIDU(pop, i, mapd.len), mapd.len);
-        individu_print(INDIVIDU(pop, i, mapd.len), mapd.len);
+        // individu_print(INDIVIDU(pop, i, mapd.len), mapd.len);
         
         if (!individu_valide(INDIVIDU(pop, i, mapd.len), mapd.len))
             printf("Individu non valide\n");
@@ -269,6 +283,10 @@ int main()
         int *faible1 = INDIVIDU(pop, offset+i, mapd.len);
         int *faible2 = INDIVIDU(pop, offset+i+1, mapd.len);
         reproduce(fort1, fort2, faible1, faible2, mapd.len);
+        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
+            mutate(faible1, mapd.len);
+        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
+            mutate(faible2, mapd.len);
     }
 
     }
