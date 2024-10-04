@@ -7,16 +7,13 @@
 #include "raymath.h"
 
 #define MAPDISTAT(map, x, y) ((map).poids[(x) + (y)*((map).len)])
-
 #define INDIVIDU(pop, i, l) ((pop) + sizeof(*(pop)) * (l) * (i))
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define NB_INDIVIDUS 32
-
-#define MUTATION_POURCENTAGE 80
+#define MUTATION_POURCENTAGE 25
 
 typedef struct MapCoord {
     Vector2 *coord;
@@ -103,13 +100,11 @@ void individu_print(int* ind, int len)
 
 void individu_generate(int* ind, int len)
 {
-    for (int i=0; i<len; ++i)
-    {
+    for (int i=0; i<len; ++i) {
         ind[i]=i;
     }
 
-    for (int i=0; i<len; ++i)
-    {
+    for (int i=0; i<len; ++i) {
         int index = GetRandomValue(0, len-1);
         int swap = ind[index];
         ind[index] = ind[i];
@@ -199,8 +194,10 @@ void reproduce(int *fort1, int *fort2, int *faible1, int *faible2, int len)
 
 }
 
+int mutation_count = 0;
 void mutate(int *ind, int len)
 {
+    mutation_count++;
     int idx1 = GetRandomValue(0, len-1);
     int idx2;
     do {
@@ -209,6 +206,56 @@ void mutate(int *ind, int len)
     int swap = ind[idx1];
     ind[idx1] = ind[idx2];
     ind[idx2] = swap;
+}
+
+void population_generate(int *pop, int len)
+{
+    for (int i = 0; i < NB_INDIVIDUS; ++i) {
+        individu_generate(INDIVIDU(pop, i, len), len);
+        if (!individu_valide(INDIVIDU(pop, i, len), len))
+            printf("Individu non valide\n");
+    }
+}
+
+void population_performance(float *perf, int *pop, MapDistance mapd)
+{
+    for (int i = 0; i < NB_INDIVIDUS; ++i) {
+        perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
+    }
+}
+
+void population_tri(float *perf, int *pop, int len)
+{
+    for (int i = 0; i < NB_INDIVIDUS - 1; i++) {
+        for (int y = 0; y < NB_INDIVIDUS - i - 1; y++) {
+            if (perf[y] > perf[y+1]) {
+                float swap = perf[y];
+                perf[y] = perf[y+1];
+                perf[y+1] = swap;
+                for (int j = 0; j < len; j++) {
+                    int swap = INDIVIDU(pop, y, len)[j];
+                    INDIVIDU(pop, y, len)[j] = INDIVIDU(pop, y+1, len)[j];
+                    INDIVIDU(pop, y+1, len)[j] = swap;
+                }
+            }
+        }
+    }
+}
+
+void population_evolution(int *pop, int len)
+{
+    for (int i = 0; i < NB_INDIVIDUS/4; i+=2) {
+        int offset = NB_INDIVIDUS/2;
+        int *fort1 = INDIVIDU(pop, i, len);
+        int *fort2 = INDIVIDU(pop, i+1, len);
+        int *faible1 = INDIVIDU(pop, offset+i, len);
+        int *faible2 = INDIVIDU(pop, offset+i+1, len);
+        reproduce(fort1, fort2, faible1, faible2, len);
+        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
+            mutate(faible1, len);
+        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
+            mutate(faible2, len);
+    }
 }
 
 int main()
@@ -226,16 +273,15 @@ int main()
 
     printf("Coordonée ville :\n");
     map_coord_print(mapc);
-
     if (!map_coord_valide(mapc)) {
         printf("mapc not valide\n");
         return 0;
     }
 
-    printf("Matrice distance entre ville :\n");
     MapDistance mapd = map_coord_to_map_distance(mapc);
-    map_distance_print(mapd);
 
+    printf("Matrice distance entre ville :\n");
+    map_distance_print(mapd);
     if (!map_distance_valide(mapd)) {
         printf("mapd not valide\n");
         return 0;
@@ -243,59 +289,18 @@ int main()
 
     int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
 
-    printf("Population aléatoirs :\n");
-    for (int i = 0; i < NB_INDIVIDUS; ++i)
-    {
-        individu_generate(INDIVIDU(pop, i, mapd.len), mapd.len);
-        // individu_print(INDIVIDU(pop, i, mapd.len), mapd.len);
-        
-        if (!individu_valide(INDIVIDU(pop, i, mapd.len), mapd.len))
-            printf("Individu non valide\n");
-    }
+    population_generate(pop, mapd.len);
 
     float perf[NB_INDIVIDUS];
 
     for (int c = 0; c < 50000; c++) {
-
-    for (int i = 0; i < NB_INDIVIDUS; ++i) {
-        perf[i] = individu_performance(INDIVIDU(pop, i, mapd.len), mapd.len, mapd);
+        population_performance(perf, pop, mapd);
+        population_tri(perf, pop, mapd.len);
+        population_evolution(pop, mapd.len);
     }
 
-    for (int i = 0; i < NB_INDIVIDUS - 1; i++) {
-        for (int y = 0; y < NB_INDIVIDUS - i - 1; y++) {
-            if (perf[y] > perf[y+1]) {
-                float swap = perf[y];
-                perf[y] = perf[y+1];
-                perf[y+1] = swap;
-                for (int j = 0; j < mapd.len; j++) {
-                    int swap = INDIVIDU(pop, y, mapd.len)[j];
-                    INDIVIDU(pop, y, mapd.len)[j] = INDIVIDU(pop, y+1, mapd.len)[j];
-                    INDIVIDU(pop, y+1, mapd.len)[j] = swap;
-                }
-            }
-        }
-    }
-
-    for (int i = 0; i < NB_INDIVIDUS/4; i+=2) {
-        int offset = NB_INDIVIDUS/2;
-        int *fort1 = INDIVIDU(pop, i, mapd.len);
-        int *fort2 = INDIVIDU(pop, i+1, mapd.len);
-        int *faible1 = INDIVIDU(pop, offset+i, mapd.len);
-        int *faible2 = INDIVIDU(pop, offset+i+1, mapd.len);
-        reproduce(fort1, fort2, faible1, faible2, mapd.len);
-        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
-            mutate(faible1, mapd.len);
-        if (GetRandomValue(0, 100) < MUTATION_POURCENTAGE)
-            mutate(faible2, mapd.len);
-    }
-
-    }
-
-    printf("Le chemin le plus court :\n[ ");
-    for (int i = 0; i < mapd.len-1; i++) {
-        printf("%d, ", INDIVIDU(pop, 0, mapd.len)[i]);
-    }
-    printf("%d ]\n", INDIVIDU(pop, 0, mapd.len)[mapd.len-1]);
+    printf("Le chemin le plus court :\n");
+    individu_print(INDIVIDU(pop, 0, mapd.len), mapd.len);
     printf("Avec une performance de %.3f.\n", perf[0]);
 
     return 0;
