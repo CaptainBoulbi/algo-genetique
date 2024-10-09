@@ -289,6 +289,12 @@ void population_evolution(int *pop, int len)
 
 int main()
 {
+    InitWindow(800, 600, "algo genetique");
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(GREEN);
+        EndDrawing();
+    }
     // setup
     SetRandomSeed(time(0));
     MapCoord mapc;
