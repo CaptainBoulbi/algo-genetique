@@ -41,9 +41,9 @@ void map_distance_print(MapDistance map)
     printf("%.3f ],\n]\n", MAPDISTAT(map, len, len));
 }
 
-// map distance valide si la matrice est simétrique car la distance de la ville
+// map distance valide si la matrice est symétrique car la distance de la ville
 // a -> b == b -> a
-// et que la diagonal est a 0 car a -> a = 0
+// et que la diagonale est a 0 car a -> a = 0
 int map_distance_valide(MapDistance map)
 {
     for (int y=0; y<map.len; y++) {
@@ -76,11 +76,12 @@ int map_coord_valide(MapCoord map)
     return 1;
 }
 
-// convertit les coordonnées des villes en matrice de distance entre les villes
+// convertit les coordonnées des villes en matrice de distances entre les villes
 // [ (0, 0), (1, 1) ]
 // est convertit en
 // [ 0.0, 1.4 ]
 // [ 1.4, 0.0 ]
+// calcul de la distance = sqrtf((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y))
 MapDistance map_coord_to_map_distance(MapCoord mapc)
 {
     MapDistance mapd;
@@ -110,11 +111,11 @@ void individu_print(int* ind, int len)
     printf("%d ]\n", ind[len-1]);
 }
 
-// genere un individu avec un chemin aléatoire qui passe par toute les villes une fois
+// genere un individu avec un chemin aléatoire qui passe une fois par chaque ville
 void individu_generate(int* ind, int len)
 {
     // le chemin de l'individu sera [ 0, 1, 2, 3, ... ]
-    // donc il possede toute les villes une fois
+    // donc il possede une fois chaque ville
     for (int i=0; i<len; ++i) {
         ind[i]=i;
     }
@@ -128,7 +129,7 @@ void individu_generate(int* ind, int len)
     }
 }
 
-// verifie que le chemin d'un individu ne possede pas plusieurs fois la meme ville
+// vérifie que le chemin d'un individu ne possede qu'une seule fois chaque ville
 int individu_valide(int* ind, int len)
 {
     for (int y = 0; y < len; ++y) {
@@ -141,7 +142,7 @@ int individu_valide(int* ind, int len)
     return 1;
 }
 
-// retourne la performance d'un individu qui est égale a la distance total de sont chemin
+// retourne la performance d'un individu qui est égale à la distance totale de son chemin
 float individu_performance(int* ind, int len, MapDistance map)
 {
     float perf = 0.0f;
@@ -153,7 +154,7 @@ float individu_performance(int* ind, int len, MapDistance map)
     return perf;
 }
 
-// corige un individu en remplaçant un doublon par une ville manquante
+// corrige un individu en remplaçant un doublon par une ville manquante
 void individu_fix(int *ind, int len)
 {
     int ex[len];
@@ -161,7 +162,7 @@ void individu_fix(int *ind, int len)
 
     // liste combien de fois une ville existe sur le chemin
     // ex = [ 0, 1, 1, 2 ] la ville 3 est en double et la 0 n'est pas sur le chemin
-    // doit etre égale ex = [ 1, 1, 1, 1 ]
+    // un chemin juste = [ 1, 1, 1, 1 ]
     for (int i = 0; i < len; i++) {
         ex[ind[i]] += 1;
     }
@@ -170,55 +171,55 @@ void individu_fix(int *ind, int len)
         int doublon = 0; // la ville en doublon
         for (doublon = 0; doublon < len && ex[doublon] != 2; doublon++);
 
-        int oublier = 0; // la ville qui n'est pas traverser
+        int oublier = 0; // la ville qui n'est pas traversée
         for (oublier = 0; oublier < len && ex[oublier] != 0; oublier++);
 
         int index = 0; // l'index dans le chemin de la ville en doublon
         for (index = 0; index < len && ind[index] != doublon; index++);
 
-        // on remplace le doublon par la vile qui n'est pas traverser
+        // on remplace le doublon par la vile qui n'est pas traversée
         ind[index] = oublier;
         ex[doublon]++;
         ex[oublier]--;
 
-        // on repete jusqu'a ce qu'il n'ya plus de doublon et que toute les villes sont parcouru par le chemin
+        // on repete jusqu'a ce qu'il n'y ait plus de doublons et que toutes les villes soient parcourues par le chemin
     } while (!individu_valide(ind, len));
 }
 
-// reproduit 2 individu séléctionner par l'evolution et en genere 2 enfant
-// on les reproduit en prenant une parti de l'un et l'ajoute a l'autre
+// reproduit 2 individus séléctionnés par l'evolution et genere 2 enfants
+// la reproduction se fait par bloc : on prend une partie d'un individu et le reste du deuxième individu
 void reproduce(int *fort1, int *fort2, int *faible1, int *faible2, int len)
 {
-    // idx1 et idx2 sont les limite de la parti que nous allons prendre
+    // idx1 et idx2 sont les limites de la partie que nous allons prendre
     int idx1 = GetRandomValue(0, len-1);
     int idx2 = GetRandomValue(0, len-1);
     int swap = idx2;
     idx2 = MAX(idx1, idx2);
     idx1 = MIN(idx1, swap);
 
-    // copie les fort ver les faible
+    // copie les forts vers les faibles
     for (int i = 0; i < idx1 ; i++) {
         faible1[i] = fort1[i];
         faible2[i] = fort2[i];
     }
-    // copie les fort ver les faible de maniere inverser
+    // copie les forts vers les faibles de maniere inversée
     for (int i = idx1; i < idx2; i++) {
         faible2[i] = fort1[i];
         faible1[i] = fort2[i];
     }
-    // puis copie la suite de la meme manier que la 1er fois
+    // puis copie la suite de la meme maniere que la 1ere fois
     for (int i = idx2; i < len ; i++) {
         faible1[i] = fort1[i];
         faible2[i] = fort2[i];
     }
 
-    // on repare les chemin en remplacant les doublon par les ville inexistante
+    // on repare les chemin en remplacant les doublons par les villes inexistantes
     individu_fix(faible1, len);
     individu_fix(faible2, len);
 
 }
 
-// la mutation d'un individu ce fait en echanger 2 ville aléatoir sur son chemin
+// la mutation d'un individu se fait en echangeant la place de 2 villes aléatoires sur son chemin
 void mutate(int *ind, int len)
 {
     int idx1 = GetRandomValue(0, len-1);
@@ -231,6 +232,7 @@ void mutate(int *ind, int len)
     ind[idx2] = swap;
 }
 
+// genere une population aléatoire
 void population_generate(int *pop, int len)
 {
     for (int i = 0; i < NB_INDIVIDUS; ++i) {
@@ -240,6 +242,7 @@ void population_generate(int *pop, int len)
     }
 }
 
+// calcule la performance de la population complète 
 void population_performance(float *perf, int *pop, MapDistance mapd)
 {
     for (int i = 0; i < NB_INDIVIDUS; ++i) {
@@ -247,7 +250,7 @@ void population_performance(float *perf, int *pop, MapDistance mapd)
     }
 }
 
-// tri la population du plus performant vert le moins performant
+// trie les individus du plus performant vers le moins performant
 // tri a bulle
 void population_tri(float *perf, int *pop, int len)
 {
@@ -269,7 +272,7 @@ void population_tri(float *perf, int *pop, int len)
     }
 }
 
-// l'evolution ce passe en prenant la meilleur moitier et en les reproduire entre eu
+// l'evolution se passe en prenant la meilleure moitie et en les reproduisant entre eux
 // il y'a une chance que l'enfant fasse une mutation
 void population_evolution(int *pop, int len)
 {
@@ -287,6 +290,7 @@ void population_evolution(int *pop, int len)
     }
 }
 
+// boucle principale du programme
 int main()
 {
     InitWindow(800, 600, "algo genetique");
@@ -301,14 +305,14 @@ int main()
     mapc.len = 5;
     mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
 
-    // definie les coordonée des ville doit etre entre 0 et 1
+    // definition des coordonées des villes (entre 0 et 1)
     mapc.coord[0] = (Vector2) {0.12,  0.96};
     mapc.coord[1] = (Vector2) {0.69,  0.12};
     mapc.coord[2] = (Vector2) {0.23,  0.36};
     mapc.coord[3] = (Vector2) {0.42,  0.96};
     mapc.coord[4] = (Vector2) {0.55,  0.02};
 
-    // affiche les coordonée + verifie si elle sont correcte
+    // affiche les coordonées + verifie si elles sont correctes
     printf("Coordonée ville :\n");
     map_coord_print(mapc);
     if (!map_coord_valide(mapc)) {
@@ -316,13 +320,13 @@ int main()
         return 0;
     }
 
-    // convertit les coordonée des villes en matrices de distance entre les villes, exemple :
+    // convertit les coordonées des villes en matrices de distance entre les villes, exemple :
     // [ 0.0, 0.8, 0.3 ]
     // [ 0.8, 0.0, 0.4 ]
     // [ 0.3, 0.4, 0.0 ]
     MapDistance mapd = map_coord_to_map_distance(mapc);
 
-    // affiche la matric de distance et verifie si elle est correcte
+    // affiche la matrice des distances et verifie si elle est correcte
     printf("Matrice distance entre ville :\n");
     map_distance_print(mapd);
     if (!map_distance_valide(mapd)) {
@@ -337,17 +341,17 @@ int main()
 
     float perf[NB_INDIVIDUS];
 
-    // boucle évolution
+    // boucle d'évolution
     for (int c = 0; c < 50000; c++) {
-        // calcul performance
+        // calcul des performances
         population_performance(perf, pop, mapd);
-        // tri en fonction de performance
+        // tri en fonction des performances
         population_tri(perf, pop, mapd.len);
-        // fait évoluer en reproduisant les meilleurs
+        // fait évoluer en reproduisant les meilleurs individus
         population_evolution(pop, mapd.len);
     }
 
-    // au bout de plusieurs itération le chemin le plus court est l'individu 0
+    // au bout de plusieurs itérations le chemin le plus court est le meilleur individu de sa génération (index 0)
     printf("Le chemin le plus court :\n");
     individu_print(INDIVIDU(pop, 0, mapd.len), mapd.len);
     printf("Avec une performance de %.3f.\n", perf[0]);
