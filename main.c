@@ -11,6 +11,7 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define CLAMP(val, min, max) (MAX(MIN((val), (max)), (min)))
 
 #define NB_INDIVIDUS 32
 #define MUTATION_POURCENTAGE 25
@@ -293,24 +294,91 @@ void population_evolution(int *pop, int len)
 // boucle principale du programme
 int main()
 {
-    InitWindow(800, 600, "algo genetique");
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(GREEN);
-        EndDrawing();
-    }
     // setup
     SetRandomSeed(time(0));
     MapCoord mapc;
     mapc.len = 5;
+
     mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
 
     // definition des coordonées des villes (entre 0 et 1)
-    mapc.coord[0] = (Vector2) {0.12,  0.96};
+    mapc.coord[0] = (Vector2) {0.00,  0.00};
     mapc.coord[1] = (Vector2) {0.69,  0.12};
     mapc.coord[2] = (Vector2) {0.23,  0.36};
     mapc.coord[3] = (Vector2) {0.42,  0.96};
-    mapc.coord[4] = (Vector2) {0.55,  0.02};
+    mapc.coord[4] = (Vector2) {1.00,  1.00};
+
+    Vector2 window = {1200, 600};
+
+    InitWindow(window.x, window.y, "algo genetique");
+    SetWindowState(FLAG_WINDOW_RESIZABLE);
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        int ville_radius = 15;
+        int map_thickness = 5;
+        int offset = ville_radius + map_thickness;
+        Rectangle map;
+        static int first_frame = 1;
+        if (IsWindowResized() || first_frame) {
+            first_frame = 0;
+            window.x = GetScreenWidth();
+            window.y = GetScreenHeight();
+
+            map.width = MIN(window.x/2, window.y) - offset*2;
+            map.height = MIN(window.x/2, window.y) - offset*2;
+            map.x = offset;
+            map.y = (window.y/2 - map.height/2);
+        }
+        BeginDrawing();
+        {
+            ClearBackground(GREEN);
+            Vector2 mouse = GetMousePosition();
+
+            for (int i = 0; i < mapc.len; i++) {
+                Vector2 coord;
+                coord.x = mapc.coord[i].x * map.width + map.x;
+                coord.y = mapc.coord[i].y * map.width + map.y;
+
+                static int ville_click = -1;
+                if (ville_click < 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointCircle(coord, mouse, ville_radius))
+                    ville_click = i;
+                else if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+                    ville_click = -1;
+
+                Color color = RED;
+                if (ville_click == i) {
+                    color = YELLOW;
+                    Vector2 coord;
+
+                    coord.x = (mouse.x - map.x) / map.width;
+                    coord.y = (mouse.y - map.y) / map.height;
+
+                    coord.x = CLAMP(coord.x, 0, 1);
+                    coord.y = CLAMP(coord.y, 0, 1);
+
+                    mapc.coord[i] = coord;
+
+                    coord.x = mapc.coord[i].x * map.width + map.x;
+                    coord.y = mapc.coord[i].y * map.width + map.y;
+                }
+                DrawCircleV(coord, ville_radius, color);
+
+                char text[4];
+                snprintf(text, 4, "%d", i);
+                float text_len = TextLength(text);
+                DrawText(text, coord.x - text_len*2, coord.y - ville_radius/2, ville_radius*1.5, WHITE);
+            }
+            Rectangle m;
+            m.x = map.x - offset;
+            m.y = map.y - offset;
+            m.width = map.width + offset*2;
+            m.height = map.height + offset*2;
+
+            DrawRectangleLinesEx(m, map_thickness, RED);
+        }
+        EndDrawing();
+    }
 
     // affiche les coordonées + verifie si elles sont correctes
     printf("Coordonée ville :\n");
