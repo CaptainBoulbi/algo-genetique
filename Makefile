@@ -1,5 +1,5 @@
 all:
-	clang -Wall -Wextra main.c -o algo-genetique ./lib/libraylib.a -I./lib -lm
+	clang -Wall -Wextra -ggdb main.c -o algo-genetique ./lib/libraylib.a -I./lib -lm
 
 release:
 	clang -Wall -Wextra -O3 main.c -o algo-genetique ./lib/libraylib.a -I./lib -lm

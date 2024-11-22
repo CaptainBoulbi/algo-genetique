@@ -300,6 +300,9 @@ int main()
     mapc.len = 5;
 
     mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
+    MapDistance mapd = {0};
+    int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
+    float perf[NB_INDIVIDUS];
 
     // definition des coordonées des villes (entre 0 et 1)
     mapc.coord[0] = (Vector2) {0.00,  0.00};
@@ -319,6 +322,7 @@ int main()
         int map_thickness = 5;
         int offset = ville_radius + map_thickness;
         Rectangle map;
+        Rectangle info;
         static int first_frame = 1;
         if (IsWindowResized() || first_frame) {
             first_frame = 0;
@@ -329,11 +333,73 @@ int main()
             map.height = MIN(window.x/2, window.y) - offset*2;
             map.x = offset;
             map.y = (window.y/2 - map.height/2);
+
+            info.x = window.x - map.width;
+            info.y = 0;
+            info.width = window.x - info.x;
+            info.height = window.y;
         }
         BeginDrawing();
         {
-            ClearBackground(GREEN);
+            ClearBackground(GRAY);
             Vector2 mouse = GetMousePosition();
+
+            // next gen
+            if (IsKeyPressed(KEY_SPACE)) {
+                // affiche les coordonées + verifie si elles sont correctes
+                printf("Coordonée ville :\n");
+                map_coord_print(mapc);
+                if (!map_coord_valide(mapc)) {
+                    printf("mapc not valide\n");
+                    return 0;
+                }
+
+                // convertit les coordonées des villes en matrices de distance entre les villes, exemple :
+                // [ 0.0, 0.8, 0.3 ]
+                // [ 0.8, 0.0, 0.4 ]
+                // [ 0.3, 0.4, 0.0 ]
+                mapd = map_coord_to_map_distance(mapc);
+
+                // affiche la matrice des distances et verifie si elle est correcte
+                printf("Matrice distance entre ville :\n");
+                map_distance_print(mapd);
+                if (!map_distance_valide(mapd)) {
+                    printf("mapd not valide\n");
+                    return 0;
+                }
+
+                // if (pop != NULL) free(pop);
+                // pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
+
+                // genere la population aléatoirement
+                population_generate(pop, mapd.len);
+            }
+            // boucle d'évolution
+            for (int c = 0; c < 10; c++) {
+                // calcul des performances
+                population_performance(perf, pop, mapd);
+                // tri en fonction des performances
+                population_tri(perf, pop, mapd.len);
+                // fait évoluer en reproduisant les meilleurs individus
+                population_evolution(pop, mapd.len);
+            }
+
+            // au bout de plusieurs itérations le chemin le plus court est le meilleur individu de sa génération (index 0)
+            // printf("Le chemin le plus court :\n");
+            // individu_print(INDIVIDU(pop, 0, mapd.len), mapd.len);
+            // printf("Avec une performance de %.3f.\n", perf[0]);
+            DrawText(TextFormat("performance: %.3f", perf[0]), info.x, info.y, 20, WHITE);
+
+            for (int i = 0; i < mapd.len; i++) {
+                int idx = (i+1)%mapd.len;
+                Vector2 coord1;
+                coord1.x = mapc.coord[INDIVIDU(pop, 0, mapd.len)[i]].x * map.width + map.x;
+                coord1.y = mapc.coord[INDIVIDU(pop, 0, mapd.len)[i]].y * map.width + map.y;
+                Vector2 coord2;
+                coord2.x = mapc.coord[INDIVIDU(pop, 0, mapd.len)[idx]].x * map.width + map.x;
+                coord2.y = mapc.coord[INDIVIDU(pop, 0, mapd.len)[idx]].y * map.width + map.y;
+                DrawLineEx(coord1, coord2, 5, GOLD);
+            }
 
             for (int i = 0; i < mapc.len; i++) {
                 Vector2 coord;
@@ -348,7 +414,7 @@ int main()
 
                 Color color = RED;
                 if (ville_click == i) {
-                    color = YELLOW;
+                    color = GOLD;
                     Vector2 coord;
 
                     coord.x = (mouse.x - map.x) / map.width;
@@ -375,54 +441,11 @@ int main()
             m.width = map.width + offset*2;
             m.height = map.height + offset*2;
 
-            DrawRectangleLinesEx(m, map_thickness, RED);
+            DrawRectangleLinesEx(m, map_thickness, BLACK);
+            // DrawRectangleLinesEx(info, map_thickness, BLUE);
         }
         EndDrawing();
     }
-
-    // affiche les coordonées + verifie si elles sont correctes
-    printf("Coordonée ville :\n");
-    map_coord_print(mapc);
-    if (!map_coord_valide(mapc)) {
-        printf("mapc not valide\n");
-        return 0;
-    }
-
-    // convertit les coordonées des villes en matrices de distance entre les villes, exemple :
-    // [ 0.0, 0.8, 0.3 ]
-    // [ 0.8, 0.0, 0.4 ]
-    // [ 0.3, 0.4, 0.0 ]
-    MapDistance mapd = map_coord_to_map_distance(mapc);
-
-    // affiche la matrice des distances et verifie si elle est correcte
-    printf("Matrice distance entre ville :\n");
-    map_distance_print(mapd);
-    if (!map_distance_valide(mapd)) {
-        printf("mapd not valide\n");
-        return 0;
-    }
-
-    int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
-
-    // genere la population aléatoirement
-    population_generate(pop, mapd.len);
-
-    float perf[NB_INDIVIDUS];
-
-    // boucle d'évolution
-    for (int c = 0; c < 50000; c++) {
-        // calcul des performances
-        population_performance(perf, pop, mapd);
-        // tri en fonction des performances
-        population_tri(perf, pop, mapd.len);
-        // fait évoluer en reproduisant les meilleurs individus
-        population_evolution(pop, mapd.len);
-    }
-
-    // au bout de plusieurs itérations le chemin le plus court est le meilleur individu de sa génération (index 0)
-    printf("Le chemin le plus court :\n");
-    individu_print(INDIVIDU(pop, 0, mapd.len), mapd.len);
-    printf("Avec une performance de %.3f.\n", perf[0]);
 
     return 0;
 }
