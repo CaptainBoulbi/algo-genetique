@@ -358,17 +358,17 @@ int main()
 
             static int paused = 0;
             if (IsKeyPressed(KEY_P)) paused = !paused;
+            if (IsKeyPressed(KEY_Q)) {
+                Vector2 pos = {
+                    .x = (float)GetRandomValue(0, 100)/100,
+                    .y = (float)GetRandomValue(0, 100)/100,
+                };
+                printf("nouvelle ville a (%f, %f)\n", pos.x, pos.y);
+                mapc.len++;
+                mapc.coord[mapc.len-1] = pos;
+            }
             if (!paused) {
                 // next gen
-                if (IsKeyPressed(KEY_Q)) {
-                    Vector2 pos = {
-                        .x = (float)GetRandomValue(0, 100)/100,
-                        .y = (float)GetRandomValue(0, 100)/100,
-                    };
-                    printf("nouvelle ville a (%f, %f)\n", pos.x, pos.y);
-                    mapc.len++;
-                    mapc.coord[mapc.len-1] = pos;
-                }
                 if (IsKeyPressed(KEY_SPACE)) {
                     nb_generation = 0;
                     last_perf = 9999999;
