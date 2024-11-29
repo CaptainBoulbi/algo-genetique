@@ -13,8 +13,13 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define CLAMP(val, min, max) (MAX(MIN((val), (max)), (min)))
 
-#define NB_INDIVIDUS 32
+#define NB_INDIVIDUS 100
 #define MUTATION_POURCENTAGE 25
+
+#define BA_LEN 500
+Vector2 BA_COORD[BA_LEN] = {0};
+float BA_POIDS[BA_LEN*BA_LEN] = {0};
+int BA_POP[BA_LEN*NB_INDIVIDUS] = {0};
 
 typedef struct MapCoord {
     Vector2 *coord;
@@ -87,11 +92,12 @@ MapDistance map_coord_to_map_distance(MapCoord mapc)
 {
     MapDistance mapd;
     mapd.len = mapc.len;
-    mapd.poids = calloc(sizeof(*mapd.poids), mapd.len * mapd.len);
+    mapd.poids = BA_POIDS;
 
     // recupere seulement les valeur pour calculer la partir haute de la matrice
     // et copie la valeur pour la parti basse, vue qu'elle doit etre symétrique
     for (int y = 0; y < mapc.len; y++) {
+        MAPDISTAT(mapd, y, y) = 0;
         for (int x = y+1; x < mapc.len; x++) {
             float distance = Vector2Distance(mapc.coord[x], mapc.coord[y]);
             // copie symétriquement
@@ -298,11 +304,17 @@ int main()
     SetRandomSeed(time(0));
     MapCoord mapc;
     mapc.len = 5;
+    mapc.coord = BA_COORD;
 
-    mapc.coord = calloc(sizeof(*mapc.coord), mapc.len);
     MapDistance mapd = {0};
-    int *pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
+    mapd.poids = BA_POIDS;
+
+    int *pop = BA_POP;
     float perf[NB_INDIVIDUS];
+    float last_perf = 99999;
+    int best_perf_gen = 0;
+
+    int nb_generation = 0;
 
     // definition des coordonées des villes (entre 0 et 1)
     mapc.coord[0] = (Vector2) {0.00,  0.00};
@@ -344,51 +356,75 @@ int main()
             ClearBackground(GRAY);
             Vector2 mouse = GetMousePosition();
 
-            // next gen
-            if (IsKeyPressed(KEY_SPACE)) {
-                // affiche les coordonées + verifie si elles sont correctes
-                printf("Coordonée ville :\n");
-                map_coord_print(mapc);
-                if (!map_coord_valide(mapc)) {
-                    printf("mapc not valide\n");
-                    return 0;
+            static int paused = 0;
+            if (IsKeyPressed(KEY_P)) paused = !paused;
+            if (!paused) {
+                // next gen
+                if (IsKeyPressed(KEY_Q)) {
+                    Vector2 pos = {
+                        .x = (float)GetRandomValue(0, 100)/100,
+                        .y = (float)GetRandomValue(0, 100)/100,
+                    };
+                    printf("nouvelle ville a (%f, %f)\n", pos.x, pos.y);
+                    mapc.len++;
+                    mapc.coord[mapc.len-1] = pos;
                 }
+                if (IsKeyPressed(KEY_SPACE)) {
+                    nb_generation = 0;
+                    last_perf = 9999999;
+                    best_perf_gen = 0;
+                    // affiche les coordonées + verifie si elles sont correctes
+                    printf("Coordonée ville :\n");
+                    map_coord_print(mapc);
+                    if (!map_coord_valide(mapc)) {
+                        printf("mapc not valide\n");
+                        return 0;
+                    }
 
-                // convertit les coordonées des villes en matrices de distance entre les villes, exemple :
-                // [ 0.0, 0.8, 0.3 ]
-                // [ 0.8, 0.0, 0.4 ]
-                // [ 0.3, 0.4, 0.0 ]
-                mapd = map_coord_to_map_distance(mapc);
+                    // convertit les coordonées des villes en matrices de distance entre les villes, exemple :
+                    // [ 0.0, 0.8, 0.3 ]
+                    // [ 0.8, 0.0, 0.4 ]
+                    // [ 0.3, 0.4, 0.0 ]
+                    mapd = map_coord_to_map_distance(mapc);
 
-                // affiche la matrice des distances et verifie si elle est correcte
-                printf("Matrice distance entre ville :\n");
-                map_distance_print(mapd);
-                if (!map_distance_valide(mapd)) {
-                    printf("mapd not valide\n");
-                    return 0;
+                    // affiche la matrice des distances et verifie si elle est correcte
+                    printf("Matrice distance entre ville :\n");
+                    map_distance_print(mapd);
+                    if (!map_distance_valide(mapd)) {
+                        printf("mapd not valide\n");
+                        return 0;
+                    }
+
+                    // genere la population aléatoirement
+                    population_generate(pop, mapd.len);
                 }
-
-                // if (pop != NULL) free(pop);
-                // pop = calloc(sizeof(*pop), mapd.len*NB_INDIVIDUS);
-
-                // genere la population aléatoirement
-                population_generate(pop, mapd.len);
-            }
-            // boucle d'évolution
-            for (int c = 0; c < 10; c++) {
-                // calcul des performances
-                population_performance(perf, pop, mapd);
-                // tri en fonction des performances
-                population_tri(perf, pop, mapd.len);
-                // fait évoluer en reproduisant les meilleurs individus
-                population_evolution(pop, mapd.len);
+                // boucle d'évolution
+                for (int c = 0; c < 10; c++) {
+                    nb_generation++;
+                    // calcul des performances
+                    population_performance(perf, pop, mapd);
+                    // tri en fonction des performances
+                    population_tri(perf, pop, mapd.len);
+                    // fait évoluer en reproduisant les meilleurs individus
+                    population_evolution(pop, mapd.len);
+                    if (perf[0] < last_perf) {
+                        last_perf = perf[0];
+                        best_perf_gen = nb_generation;
+                    }
+                }
             }
 
             // au bout de plusieurs itérations le chemin le plus court est le meilleur individu de sa génération (index 0)
             // printf("Le chemin le plus court :\n");
             // individu_print(INDIVIDU(pop, 0, mapd.len), mapd.len);
             // printf("Avec une performance de %.3f.\n", perf[0]);
-            DrawText(TextFormat("performance: %.3f", perf[0]), info.x, info.y, 20, WHITE);
+            DrawText("Appuyer sur A pour ajouter une nouvelle ville."       , info.x, info.y+20*1, 20, WHITE);
+            DrawText("Appuyer sur ESPACE pour lancer la simulation"         , info.x, info.y+20*2, 20, WHITE);
+            DrawText("Appuyer sur P pour activer/desactiver la simulation"  , info.x, info.y+20*3, 20, WHITE);
+            DrawText(TextFormat("\nperformance: %.3f", perf[0])             , info.x, info.y+20*4, 20, WHITE);
+            DrawText(TextFormat("\nnombre ville: %d", mapc.len)             , info.x, info.y+20*5, 20, WHITE);
+            DrawText(TextFormat("\nnombre de generation: %d", nb_generation), info.x, info.y+20*6, 20, WHITE);
+            DrawText(TextFormat("\ngeneration record: %d", best_perf_gen)   , info.x, info.y+20*7, 20, WHITE);
 
             for (int i = 0; i < mapd.len; i++) {
                 int idx = (i+1)%mapd.len;
